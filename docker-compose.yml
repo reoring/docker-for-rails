@@ -1,0 +1,63 @@
+version: '3.1'
+services:
+  rails: &base
+    build:
+      context: ./docker
+      dockerfile: Dockerfile.dev
+    command: ["bundle", "exec", "rails", "s", "-p", "3000", "-b", "0.0.0.0"]
+    env_file:
+      - .env.dev
+    volumes:
+      - .:/app
+    networks:
+      - front
+      - back
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+      - redis
+    tty: true
+    stdin_open: true
+  spring:
+    <<: *base
+    command: ["bundle", "exec", "spring", "server"]
+    ports: []
+    tty: false
+    stdin_open: false
+    volumes:
+      - .:/app
+      - bundle:/usr/local/bundle
+  db:
+    image: "mysql:5.7"
+    environment:
+      MYSQL_ROOT_PASSWORD: db_password
+      MYSQL_DATABASE: dev_database
+    volumes:
+      - db:/var/lib/mysql
+    networks:
+      - back
+    ports:
+      - "3307:3306"
+  sidekiq:
+    <<: *base
+    command: ["bundle", "exec", "sidekiq"]
+    networks:
+      - back
+    ports: []
+  redis:
+    image: redis:3.2.1-alpine
+    networks:
+      - back
+    ports:
+      - "6379:6379"
+
+volumes:
+  db:
+    driver: local
+  bundle:
+    driver: local
+
+networks:
+  front:
+  back:
